@@ -1,6 +1,7 @@
 #! /bin/bash
 
 #需要自备一个QCOW2镜像与一个XML文件
+#QCOW2配置好console
 
 name=`cat ./server.xml | grep -i '<name>' | awk -F\> '{print $2}' | awk -F\< '{print $1}'`
 uuid=`cat ./server.xml | grep -i uuid | awk -F\> '{print $2}' | awk -F\< '{print $1}'`
