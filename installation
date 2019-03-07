@@ -1,0 +1,83 @@
+#!/bin/bash
+
+single=1
+DISK_SIZE=50
+MY_IP=`ifconfig br0 | grep -w inet | awk '{print $2}'`
+PASSWD_NEW=`openssl passwd ${PASSWD}`
+cat > /var/www/html/ks.cfg << EOF
+install		
+keyboard 'us'	
+graphical
+rootpw --iscrypted ${PASSWD_NEW}
+url --url="http://${MY_IP}/repos"
+lang en_US.UTF-8
+auth  --useshadow  --passalgo=sha512
+selinux --disabled
+skipx
+
+zerombr
+firewall --disabled
+network  --onboot=yes --bootproto=dhcp --device=eth0 --noipv6
+network  --hostname=server
+reboot
+timezone Asia/Shanghai
+bootloader --append="quiet crashkernel=auto" --location=mbr
+clearpart --all --initlabel
+part /boot --fstype="ext4" --size=1024
+part swap --fstype="swap" --size=4096
+part / --fstype="ext4" --grow --size=46080
+
+#%post
+#rm -f /etc/yum.repos.d/*
+#cat >>/etc/yum.repos.d/base.repo<<eof
+#[base]
+#name=sohu
+#baseurl=http://mirrors.sohu.com/centos/7/os/x86_64/
+#gpgcheck=0
+#enable=1
+#[epel]
+#name=epel
+#baseurl=http://mirrors.aliyun.com/epel/7Server/x86_64/
+#enable=1
+#gpgcheck=0
+#eof
+#sed -i "s/rhgb //" /boot/grub2/grub.cfg
+#sed -i "s/ONBOOT.*$/ONBOOT=yes/" /etc/sysconfig/network-scripts/ifcfg-eth0
+#sed -i "/UUID/d" /etc/sysconfig/network-scripts/ifcfg-eth0
+#echo "DNS1=114.114.114.114" >> /etc/sysconfig/network-scripts/ifcfg-eth0
+#echo "UseDNS no" >> /etc/ssh/sshd_config
+#sed -i "s/^SELINUX=.*$/SELINUX=disabled/" /etc/sysconfig/selinux
+#systemctl disable firewalld
+#%end
+
+%packages
+@^minimal
+@core
+chrony
+
+%end
+EOF
+virt-install \
+--name server_init \
+--memory ${MEM} \
+--vcpus ${VCPU} \
+--disk path=/home/server.qcow2,size=${DISK_SIZE},format=qcow2 \
+--network bridge=br0 \
+--location http://${MY_IP}/repos \
+--os-type=linux --os-variant rhel7 \
+--initrd-inject /var/www/html/ks.cfg \
+--noautoconsole \
+-x "ks=http://${MY_IP}/ks.cfg console=tty0 console=ttyS0,115200n8"
+while [ ${single} -eq 1 ]
+do
+	virsh list > /home/vm1.txt
+	cat /home/vm1.txt | grep -v "^$" | awk 'NR>2{print $2}' > /home/vm2.txt
+	if [ -s /home/vm2.txt ]; then
+		single=1
+	else
+		single=0
+		rm -rf /home/vm1.txt /home/vm2.txt
+	fi
+done
+virsh dumpxml server_init > /home/server.xml
+#virsh destroy server_init 

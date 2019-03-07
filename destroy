@@ -1,0 +1,11 @@
+#! /bin/bash
+
+virsh list --all > /home/vm1.txt
+cat vm1.txt | grep -v "^$" | awk 'NR>2{print $2}' > /home/vm2.txt
+for i in `cat /home/vm2.txt`
+do
+	virsh destroy ${i}
+	virsh undefine ${i}
+done
+rm -rf /home/vm1.txt /home/vm2.txt
+rm -rf /home/Data

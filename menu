@@ -1,0 +1,152 @@
+#!/bin/bash
+
+function menu
+{
+	echo "================================================"
+	echo "=    Virtual Machine Batch Deployment Tool     ="
+	echo "================================================"
+	echo ""
+	echo " [1]基础环境部署"
+	echo " [2]部署初始化虚拟机"
+	echo " [3]批量部署虚拟机"
+	echo " [4]删除所有虚拟机"
+	echo " [5]帮助信息"
+	echo " [6]退出"
+	echo ""
+	echo " 注意：请先查看帮助信息再进行使用."
+	echo ""
+}
+while true
+do
+	clear
+	menu
+	read -p " 请输入您的选择: " choice
+	case ${choice} in
+		1)
+		echo ""
+		echo "建议在服务器本地执行，而不是ssh远程登录执行."
+		echo ""
+		read -p "请输入服务器桥接IP地址（仅支持C类地址）： " MY_IP
+		sleep 2
+		clear
+		#source ./environment
+		echo "----------------------------------------------"
+		echo ""
+		while true
+		do
+			read -p "完成，是否返回菜单？[yes/no]： " option
+			if [[ ${option} = 'yes' ]]; then
+				break
+			else
+				echo ""
+				sleep 2
+				continue
+			fi
+		done
+		;;
+		2)
+		echo ""
+		read -p "请输入VCPU(c)： " VCPU
+		echo ""
+		read -p "请输入Memory(M)： " MEM
+		echo ""
+		read -p "请输入虚拟机Root密码： " PASSWD
+		sleep 2
+		clear
+		#source ./installation
+		echo "----------------------------------------------"
+		echo ""
+		while true
+		do
+			read -p "完成，是否返回菜单？[yes/no]： " option
+			if [[ ${option} = 'yes' ]]; then
+				break
+			else
+				echo ""
+				sleep 2
+				continue
+			fi
+		done
+		;;
+		3)
+		clear
+		echo ""
+		echo "注意：虚拟机序号与虚拟机IP地址有以下关系（假设服务器桥接网络为192.168.1.0/24）："
+		echo ""
+		echo "序号为：01 02 03"
+		echo ""
+		echo "虚拟机名字：				虚拟机IP："
+		echo "		server-01				192.168.1.101/24"
+		echo "		server-02				192.168.1.102/24"
+		echo "		server-03				192.168.1.103/24"
+		echo ""
+		echo "注意：10以下的序号请在前面补0."
+		echo ""
+		read -p "请输入虚拟机起始序号： " NUM_START
+		echo ""
+		read -p "请输入虚拟机终止序号： " NUM_END
+		sleep 2
+		clear
+		#source ./deploy
+		echo "----------------------------------------------"
+		echo ""
+		while true
+		do
+			read -p "完成，是否返回菜单？[yes/no]： " option
+			if [[ ${option} = 'yes' ]]; then
+				break
+			else
+				echo ""
+				sleep 2
+				continue
+			fi
+		done
+		;;
+		4)
+		echo ""
+		read -p "此操作属于极度危险操作，是否确定继续？[yes/no]： " user_option
+		if [[ ${user_option} = 'yes' ]]; then
+			sleep 2
+			clear
+			#source ./destroy
+		fi
+		echo "----------------------------------------------"
+		echo ""
+		while true
+		do
+			read -p "完成，是否返回菜单？[yes/no]： " option
+			if [[ ${option} = 'yes' ]]; then
+				break
+			else
+				echo ""
+				sleep 2
+				continue
+			fi
+		done
+		;;
+		5)
+		clear
+		cat ./help
+		echo "----------------------------------------------"
+		echo ""
+		while true
+		do
+			read -p "完成，是否返回菜单？[yes/no]： " option
+			if [[ ${option} = 'yes' ]]; then
+				break
+			else
+				echo ""
+				sleep 2
+				continue
+			fi
+		done
+		;;
+		6)
+		break
+		;;
+		*)
+		echo "Error Input,Please choose again."
+		sleep 2
+		;;
+	esac
+done

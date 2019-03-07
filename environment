@@ -1,0 +1,103 @@
+#! /bin/bash
+
+systemctl stop firewalld
+systemctl disable firewalld
+sed 's/SELINUX=enforcing/SELINUX=disabled/' /etc/selinux/config
+setenforce 0
+cat > /etc/sysconfig/network-scripts/ifcfg-em1 << EOF
+DEVICE=em1
+TYPE=Ethernet
+ONBOOT=yes
+BRIDGE=br0
+EOF
+cat > /etc/sysconfig/network-scripts/ifcfg-br0 << EOF
+DEVICE=br0
+TYPE=Bridge
+ONBOOT=yes
+BOOTPROTO=static
+IPADDR=${MY_IP}
+NETMASK=255.255.255.0
+GATEWAY=192.168.1.1
+EOF
+systemctl restart network
+ISO=`find /home/ -name *.iso | head -n 1 | awk -F/ '{print $3}'`
+PKGS=(
+net-tools
+bridge-utils
+libguestfs-tools
+qemu-kvm
+libvirt
+virt-install
+virt-manager
+httpd
+)
+mv /home/${ISO} /home/centos7.iso
+mount /home/centos7.iso /mnt
+mkdir /etc/yum.repos.d/bak
+mv /etc/yum.repos.d/*.repo /etc/yum.repos.d/bak
+cat > /etc/yum.repos.d/qyy.repo << EOF
+[qyy]
+name=qyy
+baseurl=file:///mnt/
+gpgcheck=0
+enabled=1
+EOF
+yum clean all && yum makecache
+yum install ${PKGS[*]} -y
+systemctl start libvirtd httpd
+[ $? -ne 0 ] && exit
+systemctl enable libvirtd httpd
+mkdir /var/www/html/repos
+umount /mnt
+mount /home/centos7.iso /var/www/html/repos
+cat > /etc/yum.repos.d/qyy.repo << EOF
+[qyy]
+name=qyy
+baseurl=http://${MY_IP}/repos
+gpgcheck=0
+enabled=1
+EOF
+yum clean all && yum makecache
+cat >> /etc/rc.d/rc.local << EOF
+mount /home/centos7.iso /var/www/html/repos
+EOF
+chmod +x /etc/rc.d/rc.local
+TimeZone=`timedatectl | grep "Time zone" | awk '{ print $3 }' | awk -F/ '{ print $2 }'`
+if [[ ${TimeZone} != Shanghai ]]; then
+	timedatectl set-timezone Asia/Shanghai
+	echo "TimeZone is OK!"
+else
+	echo "TimeZone is Shanghai"
+fi
+#Crontab Script
+mkdir /home/script &> /dev/null
+cat > /home/script/vm_shutdown.sh << EOF
+#!/bin/bash
+
+virsh list > /home/vm1.txt
+cat /home/vm1.txt | grep -v "^$" | awk 'NR>2{print \$2}' > /home/vm2.txt
+
+for vm_name in \`cat /home/vm2.txt\`
+do
+	virsh shutdown \${vm_name}
+done
+
+rm -rf /home/vm1.txt /home/vm2.txt
+EOF
+chmod +x /home/script/vm_shutdown.sh
+cat > /home/script/poweroff.sh << EOF
+#!/bin/bash
+
+echo "\`date +%F\` [INFO]	Poweroff Successfully." >> /home/poweroff.log
+/sbin/poweroff
+EOF
+chmod +x /home/script/poweroff.sh
+#Crontab Setup
+systemctl -l | grep crond > /dev/null 2>&1
+if [[ $? -eq 0 ]]; then
+	echo "55 23 * * * source /home/script/vm_shutdown.sh" >> /var/spool/cron/root
+	echo "0 0 * * * source /home/script/poweroff.sh" >> /var/spool/cron/root
+	echo "crond is OK!"
+else
+	echo "E: crond not running"
+fi
