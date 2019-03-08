@@ -1,15 +1,21 @@
 #! /bin/bash
 
+ip_1=`echo ${MY_IP} | awk -F. '{print $1}'`
+ip_2=`echo ${MY_IP} | awk -F. '{print $2}'`
+ip_3=`echo ${MY_IP} | awk -F. '{print $3}'`
 systemctl stop firewalld
 systemctl disable firewalld
-sed 's/SELINUX=enforcing/SELINUX=disabled/' /etc/selinux/config
+sed 's/SELINUX=enforcing/SELINUX=disabled/' /etc/selinux/config &> /dev/null
 setenforce 0
+[ $? -eq 0 ] && echo "firewalld and selinux is OK! "
+echo""
 cat > /etc/sysconfig/network-scripts/ifcfg-em1 << EOF
 DEVICE=em1
 TYPE=Ethernet
 ONBOOT=yes
 BRIDGE=br0
 EOF
+sed -i "s,ONBOOT=yes,ONBOOT=no,g" /etc/sysconfig/network-scripts/ifcfg-em2
 cat > /etc/sysconfig/network-scripts/ifcfg-br0 << EOF
 DEVICE=br0
 TYPE=Bridge
@@ -17,9 +23,11 @@ ONBOOT=yes
 BOOTPROTO=static
 IPADDR=${MY_IP}
 NETMASK=255.255.255.0
-GATEWAY=192.168.1.1
+GATEWAY=${ip_1}.${ip_2}.${ip_3}.1
 EOF
 systemctl restart network
+[ $? -eq 0 ] && echo "network is OK! "
+echo ""
 ISO=`find /home/ -name *.iso | head -n 1 | awk -F/ '{print $3}'`
 PKGS=(
 net-tools
@@ -30,11 +38,12 @@ libvirt
 virt-install
 virt-manager
 httpd
+dhcp
 )
-mv /home/${ISO} /home/centos7.iso
-mount /home/centos7.iso /mnt
-mkdir /etc/yum.repos.d/bak
-mv /etc/yum.repos.d/*.repo /etc/yum.repos.d/bak
+mv -f /home/${ISO} /home/centos7.iso &> /dev/null
+mount /home/centos7.iso /mnt &> /dev/null
+mkdir /etc/yum.repos.d/bak &> /dev/null
+mv -f /etc/yum.repos.d/*.repo /etc/yum.repos.d/bak &> /dev/null
 cat > /etc/yum.repos.d/qyy.repo << EOF
 [qyy]
 name=qyy
@@ -42,14 +51,16 @@ baseurl=file:///mnt/
 gpgcheck=0
 enabled=1
 EOF
-yum clean all && yum makecache
-yum install ${PKGS[*]} -y
-systemctl start libvirtd httpd
-[ $? -ne 0 ] && exit
-systemctl enable libvirtd httpd
-mkdir /var/www/html/repos
-umount /mnt
-mount /home/centos7.iso /var/www/html/repos
+yum clean all  &> /dev/null && yum makecache &> /dev/null
+yum install ${PKGS[*]} -y &> /dev/null
+[ $? -eq 0 ] && echo "PKGS is OK! "
+echo ""
+systemctl start libvirtd httpd &> /dev/null
+[ $? -ne 0 ] && exit && echo "Service Error!! "
+systemctl enable libvirtd httpd &> /dev/null
+mkdir /var/www/html/repos &> /dev/null
+umount /mnt &> /dev/null
+mount /home/centos7.iso /var/www/html/repos &> /dev/null
 cat > /etc/yum.repos.d/qyy.repo << EOF
 [qyy]
 name=qyy
@@ -57,7 +68,9 @@ baseurl=http://${MY_IP}/repos
 gpgcheck=0
 enabled=1
 EOF
-yum clean all && yum makecache
+yum clean all &> /dev/null && yum makecache &> /dev/null
+[ $? -eq 0 ] && echo "Bridge and repos is OK! "
+echo ""
 cat >> /etc/rc.d/rc.local << EOF
 mount /home/centos7.iso /var/www/html/repos
 EOF
@@ -66,8 +79,10 @@ TimeZone=`timedatectl | grep "Time zone" | awk '{ print $3 }' | awk -F/ '{ print
 if [[ ${TimeZone} != Shanghai ]]; then
 	timedatectl set-timezone Asia/Shanghai
 	echo "TimeZone is OK!"
+	echo ""
 else
 	echo "TimeZone is Shanghai"
+	echo ""
 fi
 #Crontab Script
 mkdir /home/script &> /dev/null
@@ -98,6 +113,9 @@ if [[ $? -eq 0 ]]; then
 	echo "55 23 * * * source /home/script/vm_shutdown.sh" >> /var/spool/cron/root
 	echo "0 0 * * * source /home/script/poweroff.sh" >> /var/spool/cron/root
 	echo "crond is OK!"
+	echo ""
+	echo "Environment Complete! "
+	echo ""
 else
 	echo "E: crond not running"
 fi

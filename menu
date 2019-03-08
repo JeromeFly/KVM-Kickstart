@@ -26,10 +26,10 @@ do
 		echo ""
 		echo "建议在服务器本地执行，而不是ssh远程登录执行."
 		echo ""
-		read -p "请输入服务器桥接IP地址（仅支持C类地址）： " MY_IP
+		read -p "请输入服务器桥接IP地址（仅支持C类地址），不需要带掩码： " MY_IP
 		sleep 2
 		clear
-		#source ./environment
+		source ./environment
 		echo "----------------------------------------------"
 		echo ""
 		while true
@@ -53,8 +53,9 @@ do
 		read -p "请输入虚拟机Root密码： " PASSWD
 		sleep 2
 		clear
-		#source ./installation
+		source ./installation
 		echo "----------------------------------------------"
+		echo "请查看您的home目录下是否生成了server.qcow2与server.xml文件."
 		echo ""
 		while true
 		do
@@ -86,9 +87,7 @@ do
 		echo ""
 		read -p "请输入虚拟机终止序号： " NUM_END
 		sleep 2
-		clear
-		#source ./deploy
-		echo "----------------------------------------------"
+		source ./deploy
 		echo ""
 		while true
 		do
@@ -108,7 +107,7 @@ do
 		if [[ ${user_option} = 'yes' ]]; then
 			sleep 2
 			clear
-			#source ./destroy
+			source ./destroy
 		fi
 		echo "----------------------------------------------"
 		echo ""
@@ -126,7 +125,7 @@ do
 		;;
 		5)
 		clear
-		cat ./help
+		less ./information
 		echo "----------------------------------------------"
 		echo ""
 		while true

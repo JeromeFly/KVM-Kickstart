@@ -1,11 +1,14 @@
-#! /bin/bash
+#!/bin/bash
 
 virsh list --all > /home/vm1.txt
-cat vm1.txt | grep -v "^$" | awk 'NR>2{print $2}' > /home/vm2.txt
+cat /home/vm1.txt | grep -v "^$" | awk 'NR>2{print $2}' | grep server > /home/vm2.txt
 for i in `cat /home/vm2.txt`
 do
 	virsh destroy ${i}
 	virsh undefine ${i}
 done
+echo ""
+echo "Destroy All Virtual Machine! "
+echo ""
 rm -rf /home/vm1.txt /home/vm2.txt
-rm -rf /home/Data
+rm -rf /home/Date

@@ -1,5 +1,8 @@
 #!/bin/bash
 
+echo ""
+echo "Deployment..."
+echo "----------------------------------------------"
 MY_IP=`ifconfig br0 | grep -w inet | awk '{print $2}'`
 ip_1=`echo ${MY_IP} | awk -F. '{print $1}'`
 ip_2=`echo ${MY_IP} | awk -F. '{print $2}'`
@@ -39,7 +42,7 @@ do
 	sed -i "s,${source_xml_file},/home/Date/server/${dir}/${qcow2_disk},g" /home/Date/server/${dir}/${xml_file}
 	sed -i "s,x.x.x.x,${ip_1}.${ip_2}.${ip_3}.1${i},g" /home/ifcfg-eth0
 	virt-copy-in -a /home/Date/server/${dir}/${qcow2_disk} /home/ifcfg-eth0 /etc/sysconfig/network-scripts/
-	virsh define /home/Date/server/${dir}/${xml_file}
+	virsh define /home/Date/server/${dir}/${xml_file} &> /dev/null
 	virsh start server-${i}
-	rm -rf /home/ifcfg-eth0
+	rm -rf /home/ifcfg-eth0 /home/ifcfg-eth0_init
 done

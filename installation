@@ -1,8 +1,11 @@
 #!/bin/bash
 
 single=1
-DISK_SIZE=50
+DISK_SIZE=100
 MY_IP=`ifconfig br0 | grep -w inet | awk '{print $2}'`
+ip_1=`echo ${MY_IP} | awk -F. '{print $1}'`
+ip_2=`echo ${MY_IP} | awk -F. '{print $2}'`
+ip_3=`echo ${MY_IP} | awk -F. '{print $3}'`
 PASSWD_NEW=`openssl passwd ${PASSWD}`
 cat > /var/www/html/ks.cfg << EOF
 install		
@@ -25,30 +28,7 @@ bootloader --append="quiet crashkernel=auto" --location=mbr
 clearpart --all --initlabel
 part /boot --fstype="ext4" --size=1024
 part swap --fstype="swap" --size=4096
-part / --fstype="ext4" --grow --size=46080
-
-#%post
-#rm -f /etc/yum.repos.d/*
-#cat >>/etc/yum.repos.d/base.repo<<eof
-#[base]
-#name=sohu
-#baseurl=http://mirrors.sohu.com/centos/7/os/x86_64/
-#gpgcheck=0
-#enable=1
-#[epel]
-#name=epel
-#baseurl=http://mirrors.aliyun.com/epel/7Server/x86_64/
-#enable=1
-#gpgcheck=0
-#eof
-#sed -i "s/rhgb //" /boot/grub2/grub.cfg
-#sed -i "s/ONBOOT.*$/ONBOOT=yes/" /etc/sysconfig/network-scripts/ifcfg-eth0
-#sed -i "/UUID/d" /etc/sysconfig/network-scripts/ifcfg-eth0
-#echo "DNS1=114.114.114.114" >> /etc/sysconfig/network-scripts/ifcfg-eth0
-#echo "UseDNS no" >> /etc/ssh/sshd_config
-#sed -i "s/^SELINUX=.*$/SELINUX=disabled/" /etc/sysconfig/selinux
-#systemctl disable firewalld
-#%end
+part / --fstype="ext4" --grow --size=96256
 
 %packages
 @^minimal
@@ -57,6 +37,18 @@ chrony
 
 %end
 EOF
+version=`rpm -qa | grep dhcp-4 | awk -F\- '{print $2}'`
+/bin/cp -f /usr/share/doc/dhcp-${version}/dhcpd.conf.example /etc/dhcp/dhcpd.conf &> /dev/null
+cat >> /etc/dhcp/dhcpd.conf << EOF
+subnet ${ip_1}.${ip_2}.${ip_3}.0 netmask 255.255.255.0 {
+    option routers ${ip_1}.${ip_2}.${ip_3}.1;
+    option subnet-mask 255.255.255.0;
+    range dynamic-bootp ${ip_1}.${ip_2}.${ip_3}.10 ${ip_1}.${ip_2}.${ip_3}.15;
+}
+EOF
+systemctl restart dhcpd &> /dev/null
+[ $? -ne 0 ] && exit && echo "DHCP Service Error!! "
+sleep 3
 virt-install \
 --name server_init \
 --memory ${MEM} \
@@ -68,16 +60,21 @@ virt-install \
 --initrd-inject /var/www/html/ks.cfg \
 --noautoconsole \
 -x "ks=http://${MY_IP}/ks.cfg console=tty0 console=ttyS0,115200n8"
+echo "--------------------------"
+echo "Installation, please wait..."
 while [ ${single} -eq 1 ]
 do
 	virsh list > /home/vm1.txt
 	cat /home/vm1.txt | grep -v "^$" | awk 'NR>2{print $2}' > /home/vm2.txt
 	if [ -s /home/vm2.txt ]; then
 		single=1
+		sleep 10
 	else
+		echo ""
+		echo "Installation Complete! "
 		single=0
 		rm -rf /home/vm1.txt /home/vm2.txt
 	fi
 done
 virsh dumpxml server_init > /home/server.xml
-#virsh destroy server_init 
+virsh undefine server_init &> /dev/null
