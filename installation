@@ -76,5 +76,6 @@ do
 		rm -rf /home/vm1.txt /home/vm2.txt
 	fi
 done
+systemctl stop dhcpd &> /dev/null
 virsh dumpxml server_init > /home/server.xml
 virsh undefine server_init &> /dev/null
