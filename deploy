@@ -44,5 +44,6 @@ do
 	virt-copy-in -a /home/Date/server/${dir}/${qcow2_disk} /home/ifcfg-eth0 /etc/sysconfig/network-scripts/
 	virsh define /home/Date/server/${dir}/${xml_file} &> /dev/null
 	virsh start server-${i}
-	rm -rf /home/ifcfg-eth0 /home/ifcfg-eth0_init
+	rm -rf /home/ifcfg-eth0
 done
+rm -rf /home/ifcfg-eth0_init
